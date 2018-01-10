@@ -62,6 +62,12 @@ def compute_score(text,errors,time):
     max_score = compute_max_score(text)
     return max_score/(errors+1)/normalize_time(time)
 
+def get_cpm(full_history):
+    if len(full_history) == 0:
+        return 0.
+    length = len([f for f in full_history if f[0] == "success"])
+    return length/full_history[-1][2]*60.
+
 def get_time(full_history):
     return full_history[-1][2]
 
@@ -117,11 +123,12 @@ def show_history_OLD(df):
 
 def show_history(data):
     
-    fig, (ax1, ax2, ax3) = plt.subplots(3,1,figsize=(8,8))
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4,1,figsize=(8,8))
 
     ax1.plot([compute_score(d.get("full_history")) for d in data])
     ax2.plot([wpm(get_time(d.get("full_history"))) for d in data])
     ax3.plot([get_n_errors(d.get("full_history")) for d in data])
+    ax4.plot([get_cpm(d.get("full_history")) for d in data])
 
     plt.show()
         
@@ -139,8 +146,11 @@ def main(screen):
     screen.nodelay(True)
     screen.clear()
 
+    pygame.mixer.pre_init(44100, -16, 1, 512)
     pygame.init()
     pygame.display.set_mode((1,1))
+
+    key_effect = pygame.mixer.Sound("keyboard_tap.wav")
 
     running = True
 
@@ -151,6 +161,7 @@ def main(screen):
     t0 = 0
     errors_history = []
     full_history = []
+    prev_history = []
     started = False
 
     prev_errors = 0
@@ -172,6 +183,7 @@ def main(screen):
             cursor = 0
             errors = 0
             errors_history = []
+            prev_history = full_history[:]
             full_history = []
 
         dt = time.time()-t0
@@ -192,6 +204,8 @@ def main(screen):
         screen.addstr('{:.2f}'.format(wpm(prev_dt)))
         screen.addstr(' ')
         screen.addstr(str(score))
+        screen.addstr(' ')
+        screen.addstr('{:.2f}'.format(get_cpm(prev_history)))
         if not quiet:
             screen.addstr('\n')
             screen.addstr('{:.1f}'.format(dt))
@@ -218,6 +232,7 @@ def main(screen):
                         started = True
                         t0 = time.time()
                     if event.unicode == text[cursor]:
+                        key_effect.play()
                         full_history.append(("success",text[cursor],time.time()-t0,errored))
                         cursor += 1
                         errors_history.append(errored)
