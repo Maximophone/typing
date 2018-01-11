@@ -27,7 +27,9 @@ def gen_word():
         if mod == 1:
             word = word[0].upper() + word[1:]
     else:
-        word = str(random.randint(0,10000))
+        vocabulary = "0123456789"
+        length = 4
+        word = ''.join([random.choice(vocabulary) for _ in range(length)])
     return word
 
 def wpm(time, length=10):
@@ -176,7 +178,8 @@ def main(screen):
             prev_dt = dt
             if len(full_history) > 0:
                 score = compute_score(full_history)
-                save(save_file, full_history, caps_only, numbers_only, lower_only)
+                if not no_save:
+                    save(save_file, full_history, caps_only, numbers_only, lower_only)
             else:
                 score = 0
             text = gen_text()
@@ -251,6 +254,7 @@ if __name__ == "__main__":
     parser.add_argument("--numbers-only", action="store_true")
     parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
+    parser.add_argument("--no-save", action="store_true")
     
     args = parser.parse_args()
     quiet = args.quiet
@@ -258,6 +262,7 @@ if __name__ == "__main__":
     numbers_only = args.numbers_only
     lower_only = args.lower_only
     save_file = args.save_file
+    no_save = args.no_save
     
     run()
         
