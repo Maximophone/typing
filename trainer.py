@@ -56,32 +56,37 @@ class Modes:
     ALL = "ALL"
     ALL_LOWER = "ALL_LOWER"
     NO_SYMBOLS = "NO_SYMBOLS"
+    SYMBOLS_ONLY = "SYMBOLS_ONLY"
+    SYMBOLS_ONLY_LOWER = "SYMBOLS_ONLY_LOWER"
+    SYMBOLS_ONLY_UPPER = "SYMBOLS_ONLY_UPPER"
 
-def sample_word(case="lower"):
+def sample_word(case="lower",cap=8):
     word = re.findall("[a-z]*",random.choice(WORDS))[0]
     if case == "random":
         case = random.choice(["upper","lower","first"])
     if case == "lower":
-        return word
+        return word[:cap]
     elif case == "upper":
-        return word.upper()
+        return word.upper()[:cap]
     elif case == "first":
-        return word[0].upper() + word[1:]
+        return word[0].upper() + word[1:cap]
     else:
         raise Exception("Unknown case type")
     
-def gen_symbol(upper=True,lower=True,case="lower"):
+def gen_symbol(upper=True,lower=True,case="lower",cap=8):
     symbols = []
     if upper:
         symbols += UPPER_SYMBOLS
     if lower:
         symbols += LOWER_SYMBOLS
 
-    return random.choice(symbols).format(sample_word(case=case),sample_word(case=case))
+    return random.choice(symbols).format(sample_word(case=case,cap=cap),sample_word(case=case,cap=cap))
 
 def gen_word(mode):
     num_voc = "0123456789"
     num_len = 4
+    cap = 8
+    
     if mode == Modes.ALL:
         category = "random"
         upper_symbols = True
@@ -99,11 +104,34 @@ def gen_word(mode):
         upper_symbols = False
         lower_symbols = True
         case = "lower"
+    elif mode == Modes.LOWER:
+        category = "word"
+        upper_symbols = False
+        lower_symbols = False
+        case = "lower"
     elif mode == Modes.NO_SYMBOLS:
         category = "random"
         upper_symbols = False
         lower_symbols = False
         case = "random"
+    elif mode == Modes.SYMBOLS_ONLY:
+        category = "word"
+        upper_symbols = True
+        lower_symbols = True
+        case = "lower"
+        cap = 0
+    elif mode == Modes.SYMBOLS_ONLY_LOWER:
+        category = "word"
+        upper_symbols = False
+        lower_symbols = True
+        case = "lower"
+        cap = 0
+    elif mode == Modes.SYMBOLS_ONLY_UPPER:
+        category = "word"
+        upper_symbols = True
+        lower_symbols = False
+        case = "lower"
+        cap = 0
     else:
         raise Exception("Unknown Mode")
 
@@ -111,9 +139,9 @@ def gen_word(mode):
         category = random.choice(["word","word","number"])
     if category == "word":
         if upper_symbols or lower_symbols:
-            return gen_symbol(upper=upper_symbols,lower=lower_symbols,case=case)
+            return gen_symbol(upper=upper_symbols,lower=lower_symbols,case=case,cap=cap)
         else:
-            return sample_word(case=case)
+            return sample_word(case=case,cap=cap)
     elif category == "number":
         return ''.join([random.choice(num_voc) for _ in range(num_len)])
             
@@ -130,7 +158,7 @@ def gen_word_OLD():
         if mod == 1:
             word = word[0].upper() + word[1:]
     else:
-        vocabulary = "0123456789"
+        vocabulary = "1234567890"
         length = 4
         word = ''.join([random.choice(vocabulary) for _ in range(length)])
     return word
@@ -251,22 +279,25 @@ def show_history_OLD(df):
 
 def show_history(data):
     
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4,1,figsize=(8,8))
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1,figsize=(8,8))
 
     full_histories = [d.get("full_history") for d in data]
 
     x = np.arange(len(full_histories))
     
     scores = np.array([compute_score(fh) for fh in full_histories])
-    wpms = np.array([wpm(get_time(fh)) for fh in full_histories])
+#    wpms = np.array([wpm(get_time(fh)) for fh in full_histories])
     n_errors = np.array([get_n_errors(fh) for fh in full_histories])
     cpms = np.array([get_cpm(fh) for fh in full_histories])
 
     MSIZE = 10
+    ax1.set_title("Score")
     sns.regplot(x,scores,ax=ax1,scatter_kws={"s":MSIZE})
-    sns.regplot(x,wpms,ax=ax2,scatter_kws={"s":MSIZE})
-    sns.regplot(x,n_errors,ax=ax3,scatter_kws={"s":MSIZE})
-    sns.regplot(x, cpms, ax=ax4, scatter_kws={"s":MSIZE})
+#    sns.regplot(x,wpms,ax=ax2,scatter_kws={"s":MSIZE})
+    ax2.set_title("Errors")
+    sns.regplot(x,n_errors,ax=ax2,scatter_kws={"s":MSIZE})
+    ax3.set_title("CPM")
+    sns.regplot(x, cpms, ax=ax3, scatter_kws={"s":MSIZE})
     
     plt.show()
         
@@ -392,7 +423,7 @@ if __name__ == "__main__":
     # parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
     parser.add_argument("--no-save", action="store_true")
-    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS])
+    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER])
     
     args = parser.parse_args()
     quiet = args.quiet
