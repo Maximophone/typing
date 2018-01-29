@@ -1,3 +1,4 @@
+import re
 import json
 import argparse
 import time
@@ -17,7 +18,107 @@ t2 = """
 with open("words.txt",'r') as f:
     WORDS = f.read().split('\n')
 
-def gen_word():
+LOWER_SYMBOLS = [
+    "[{}]",
+    "{};",
+    "{}'{}",
+    "#{}",
+    "{},",
+    "{}.",
+    "{}/{}",
+    "{}\{}",
+    "{}-{}",
+    "{}={}"
+    ]
+
+UPPER_SYMBOLS = [
+    "({})",
+    '"{}"',
+    "{}!",
+    "${}",
+    "{}%",
+    "{}&{}",
+    "*{}",
+    "{}_{}",
+    "{}+{}",
+    "{{{}}}",
+    "@{}",
+    "~{}",
+    "<{}>",
+    "{}?",
+    "{}|{}"
+    ]
+    
+class Modes:
+    NUMBERS = "NUMBERS"
+    LOWER = "LOWER"
+    CAPS = "CAPS"
+    ALL = "ALL"
+    ALL_LOWER = "ALL_LOWER"
+    NO_SYMBOLS = "NO_SYMBOLS"
+
+def sample_word(case="lower"):
+    word = re.findall("[a-z]*",random.choice(WORDS))[0]
+    if case == "random":
+        case = random.choice(["upper","lower","first"])
+    if case == "lower":
+        return word
+    elif case == "upper":
+        return word.upper()
+    elif case == "first":
+        return word[0].upper() + word[1:]
+    else:
+        raise Exception("Unknown case type")
+    
+def gen_symbol(upper=True,lower=True,case="lower"):
+    symbols = []
+    if upper:
+        symbols += UPPER_SYMBOLS
+    if lower:
+        symbols += LOWER_SYMBOLS
+
+    return random.choice(symbols).format(sample_word(case=case),sample_word(case=case))
+
+def gen_word(mode):
+    num_voc = "0123456789"
+    num_len = 4
+    if mode == Modes.ALL:
+        category = "random"
+        upper_symbols = True
+        lower_symbols = True
+        case = "random"
+    elif mode == Modes.NUMBERS:
+        category = "number"
+    elif mode == Modes.CAPS:
+        category = "word"
+        upper_symbols = False
+        lower_symbols = False
+        case = "upper"
+    elif mode == Modes.ALL_LOWER:
+        category = "random"
+        upper_symbols = False
+        lower_symbols = True
+        case = "lower"
+    elif mode == Modes.NO_SYMBOLS:
+        category = "random"
+        upper_symbols = False
+        lower_symbols = False
+        case = "random"
+    else:
+        raise Exception("Unknown Mode")
+
+    if category == "random":
+        category = random.choice(["word","word","number"])
+    if category == "word":
+        if upper_symbols or lower_symbols:
+            return gen_symbol(upper=upper_symbols,lower=lower_symbols,case=case)
+        else:
+            return sample_word(case=case)
+    elif category == "number":
+        return ''.join([random.choice(num_voc) for _ in range(num_len)])
+            
+
+def gen_word_OLD():
     category = random.randint(0,1)
     if lower_only or ((category or caps_only) and not numbers_only):
         word = random.choice(WORDS)
@@ -39,8 +140,8 @@ def wpm(time, length=10):
         return 0
     return length/time*60
 
-def gen_text(length=10):
-    text = ' '.join([gen_word() for _ in range(length)])
+def gen_text(mode,length=10):
+    text = ' '.join([gen_word(mode) for _ in range(length)])
     return text
 
 def letter_score(letter):
@@ -90,7 +191,7 @@ def save_OLD(save_file, score, time, errors, caps_only, numbers_only, lower_only
     with open(save_file,'a') as f:
         f.write("{},{},{},{},{},{},{}\n".format(dt.datetime.now(), score, time, errors, caps_only, numbers_only, lower_only))
 
-def save(save_file, full_history, caps_only, numbers_only, lower_only):
+def save_OLD(save_file, full_history, caps_only, numbers_only, lower_only):
     json_line = json.dumps({
         "datetime": "{}".format(dt.datetime.now()),
         "caps_only": caps_only,
@@ -101,6 +202,29 @@ def save(save_file, full_history, caps_only, numbers_only, lower_only):
     with open(save_file,'a') as f:
         f.write(json_line+'\n')
 
+def save(save_file, full_history, mode):
+    json_line = json.dumps({
+        "datetime": "{}".format(dt.datetime.now()),
+        "caps_only":"-",
+        "numbers_only":"-",
+        "lower_only":"-",
+        "mode":mode,
+        "full_history": full_history
+        })
+    with open(save_file,'a') as f:
+        f.write(json_line+'\n')
+
+def old_to_mode(datum):
+    if datum.get("caps_only"):
+        return Modes.CAPS
+    if datum.get("numbers_only"):
+        return Modes.NUMBERS
+    if datum.get("lower_only"):
+        return Modes.LOWER
+    else:
+        return Modes.NO_SYMBOLS
+    
+        
 def get_df_from_save(save_file):
     return pd.read_csv(save_file, names=["dt","score","time","errors","caps","numbers","lower"])
 
@@ -194,10 +318,10 @@ def main(screen):
             if len(full_history) > 0:
                 score = compute_score(full_history)
                 if not no_save:
-                    save(save_file, full_history, caps_only, numbers_only, lower_only)
+                    save(save_file, full_history, mode)
             else:
                 score = 0
-            text = gen_text()
+            text = gen_text(mode)
             cursor = 0
             errors = 0
             errors_history = []
@@ -240,9 +364,7 @@ def main(screen):
                 elif event.key == pygame.K_F1:
                     data = load_saved_data(save_file)
                     filtered_data = filter_data(data,
-                                              caps_only=caps_only,
-                                              numbers_only=numbers_only,
-                                              lower_only=lower_only)
+                                                mode=mode)
                     show_history(filtered_data)
                     continue
                 else:
@@ -265,17 +387,19 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--quiet",action="store_true")
-    parser.add_argument("--caps-only",action="store_true")
-    parser.add_argument("--numbers-only", action="store_true")
-    parser.add_argument("--lower-only", action="store_true")
+    # parser.add_argument("--caps-only",action="store_true")
+    # parser.add_argument("--numbers-only", action="store_true")
+    # parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
     parser.add_argument("--no-save", action="store_true")
+    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS])
     
     args = parser.parse_args()
     quiet = args.quiet
-    caps_only = args.caps_only
-    numbers_only = args.numbers_only
-    lower_only = args.lower_only
+    # caps_only = args.caps_only
+    # numbers_only = args.numbers_only
+    # lower_only = args.lower_only
+    mode = args.mode
     save_file = args.save_file
     no_save = args.no_save
     
