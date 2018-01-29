@@ -6,7 +6,9 @@ import sys
 import curses
 import random
 import matplotlib.pyplot as plt
+import seaborn as sns
 import pandas as pd
+import numpy as np
 import datetime as dt
 
 t2 = """
@@ -127,11 +129,21 @@ def show_history(data):
     
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4,1,figsize=(8,8))
 
-    ax1.plot([compute_score(d.get("full_history")) for d in data])
-    ax2.plot([wpm(get_time(d.get("full_history"))) for d in data])
-    ax3.plot([get_n_errors(d.get("full_history")) for d in data])
-    ax4.plot([get_cpm(d.get("full_history")) for d in data])
+    full_histories = [d.get("full_history") for d in data]
 
+    x = np.arange(len(full_histories))
+    
+    scores = np.array([compute_score(fh) for fh in full_histories])
+    wpms = np.array([wpm(get_time(fh)) for fh in full_histories])
+    n_errors = np.array([get_n_errors(fh) for fh in full_histories])
+    cpms = np.array([get_cpm(fh) for fh in full_histories])
+
+    MSIZE = 10
+    sns.regplot(x,scores,ax=ax1,scatter_kws={"s":MSIZE})
+    sns.regplot(x,wpms,ax=ax2,scatter_kws={"s":MSIZE})
+    sns.regplot(x,n_errors,ax=ax3,scatter_kws={"s":MSIZE})
+    sns.regplot(x, cpms, ax=ax4, scatter_kws={"s":MSIZE})
+    
     plt.show()
         
 def run():
@@ -154,6 +166,9 @@ def main(screen):
 
     key_effect = pygame.mixer.Sound("keyboard_tap.wav")
 
+    surf = pygame.Surface((32,32))
+    pygame.display.set_icon(surf)
+    
     running = True
 
     text = ''
