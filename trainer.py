@@ -48,9 +48,10 @@ UPPER_SYMBOLS = [
     "{}?",
     "{}|{}"
     ]
-    
+
 class Modes:
     NUMBERS = "NUMBERS"
+    NUMBERS_NO_MIDDLE = "NUMBERS_NO_MIDDLE"
     LOWER = "LOWER"
     CAPS = "CAPS"
     ALL = "ALL"
@@ -94,6 +95,9 @@ def gen_word(mode):
         case = "random"
     elif mode == Modes.NUMBERS:
         category = "number"
+    elif mode == Modes.NUMBERS_NO_MIDDLE:
+        category = "number"
+        num_voc = "01234789"
     elif mode == Modes.CAPS:
         category = "word"
         upper_symbols = False
@@ -423,7 +427,8 @@ if __name__ == "__main__":
     # parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
     parser.add_argument("--no-save", action="store_true")
-    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER])
+    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER,Modes.NUMBERS_NO_MIDDLE])
+    parser.add_argument("--symbols",type=str,default=None,help="Overwrite symbols list")
     
     args = parser.parse_args()
     quiet = args.quiet
