@@ -17,6 +17,13 @@ t2 = """
 
 with open("words.txt",'r') as f:
     WORDS = f.read().split('\n')
+WORDS = list(set([re.findall("[a-z]*",w)[0] for w in WORDS]))
+
+WORDS_INDEX = {}
+for i,word in enumerate(WORDS):
+    for letter in word[:8]:
+        WORDS_INDEX.setdefault(letter,set())
+        WORDS_INDEX[letter].add(i)
 
 LOWER_SYMBOLS = [
     "[{}]",
@@ -60,9 +67,17 @@ class Modes:
     SYMBOLS_ONLY = "SYMBOLS_ONLY"
     SYMBOLS_ONLY_LOWER = "SYMBOLS_ONLY_LOWER"
     SYMBOLS_ONLY_UPPER = "SYMBOLS_ONLY_UPPER"
+    CUSTOM = "CUSTOM"
 
-def sample_word(case="lower",cap=8):
-    word = re.findall("[a-z]*",random.choice(WORDS))[0]
+def sample_word(case="lower",cap=8,letters=None,letters_exclusive=False):
+    if letters is None:
+        indices = range(len(WORDS))
+    else:
+        if letters_exclusive:
+            indices = list(set.intersection(*[WORDS_INDEX[letter] for letter in letters]))
+        else:
+            indices = list(set.union(*[WORDS_INDEX[letter] for letter in letters]))
+    word = WORDS[random.choice(indices)]
     if case == "random":
         case = random.choice(["upper","lower","first"])
     if case == "lower":
@@ -74,19 +89,21 @@ def sample_word(case="lower",cap=8):
     else:
         raise Exception("Unknown case type")
     
-def gen_symbol(upper=True,lower=True,case="lower",cap=8):
+def gen_symbol(upper=True,lower=True,case="lower",cap=8,letters=None,letters_exclusive=True):
     symbols = []
     if upper:
         symbols += UPPER_SYMBOLS
     if lower:
         symbols += LOWER_SYMBOLS
 
-    return random.choice(symbols).format(sample_word(case=case,cap=cap),sample_word(case=case,cap=cap))
+    return random.choice(symbols).format(sample_word(case=case,cap=cap,letters=letters,letters_exclusive=letters_exclusive),sample_word(case=case,cap=cap,letters=letters,letters_exclusive=letters_exclusive))
 
 def gen_word(mode):
     num_voc = "0123456789"
     num_len = 4
     cap = 8
+    letters = None
+    letters_exclusive = True
     
     if mode == Modes.ALL:
         category = "random"
@@ -136,6 +153,16 @@ def gen_word(mode):
         lower_symbols = False
         case = "lower"
         cap = 0
+    elif mode == Modes.CUSTOM:
+        category = args.category
+        upper_symbols = args.upper_symbols
+        lower_symbols = args.lower_symbols
+        case = args.case
+        cap = args.cap
+        letters = args.letters
+        letters_exclusive = args.exclusive
+        num_voc = args.num_voc
+        num_len = args.num_len
     else:
         raise Exception("Unknown Mode")
 
@@ -143,9 +170,9 @@ def gen_word(mode):
         category = random.choice(["word","word","number"])
     if category == "word":
         if upper_symbols or lower_symbols:
-            return gen_symbol(upper=upper_symbols,lower=lower_symbols,case=case,cap=cap)
+            return gen_symbol(upper=upper_symbols,lower=lower_symbols,case=case,cap=cap,letters=letters,letters_exclusive=letters_exclusive)
         else:
-            return sample_word(case=case,cap=cap)
+            return sample_word(case=case,cap=cap,letters=letters,letters_exclusive=letters_exclusive)
     elif category == "number":
         return ''.join([random.choice(num_voc) for _ in range(num_len)])
             
@@ -178,14 +205,14 @@ def gen_text(mode,length=10):
 
 def letter_score(letter):
     if letter == " ":
-        return 5
+        return 0
     if letter in "0123456789":
-        return 12
+        return 20
     if letter in "abcdefghijklmnopqrstuvwxyz":
         return 10
-    if letter in "abcdefghijklmnopqrstuvwxyz":
-        return 14
-    return 16
+    if letter in "abcdefghijklmnopqrstuvwxyz".upper():
+        return 20
+    return 25
 
 def normalize_time(time):
     return time/30.
@@ -427,8 +454,17 @@ if __name__ == "__main__":
     # parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
     parser.add_argument("--no-save", action="store_true")
-    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER,Modes.NUMBERS_NO_MIDDLE])
+    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER,Modes.NUMBERS_NO_MIDDLE,Modes.CUSTOM])
     parser.add_argument("--symbols",type=str,default=None,help="Overwrite symbols list")
+    parser.add_argument("--letters",type=str,default=None)
+    parser.add_argument("--exclusive",type=int,default=1)
+    parser.add_argument("--upper-symbols",type=int,default=1)
+    parser.add_argument("--lower-symbols",type=int,default=1)
+    parser.add_argument("--num-voc",type=str,default="1234567890")
+    parser.add_argument("--num-len",type=int,default=4)
+    parser.add_argument("--cap",type=int,default=8)
+    parser.add_argument("--case",type=str,default="random")
+    parser.add_argument("--category",type=str,default="random")
     
     args = parser.parse_args()
     quiet = args.quiet
