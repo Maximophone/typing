@@ -68,6 +68,7 @@ class Modes:
     SYMBOLS_ONLY_LOWER = "SYMBOLS_ONLY_LOWER"
     SYMBOLS_ONLY_UPPER = "SYMBOLS_ONLY_UPPER"
     CUSTOM = "CUSTOM"
+    HARDCORE = "HARDCORE"
 
 def sample_word(case="lower",cap=8,letters=None,letters_exclusive=False):
     if letters is None:
@@ -105,7 +106,7 @@ def gen_word(mode):
     letters = None
     letters_exclusive = True
     
-    if mode == Modes.ALL:
+    if mode == Modes.ALL or mode == Modes.HARDCORE:
         category = "random"
         upper_symbols = True
         lower_symbols = True
@@ -329,6 +330,7 @@ def show_history(data):
     sns.regplot(x,n_errors,ax=ax2,scatter_kws={"s":MSIZE})
     ax3.set_title("CPM")
     sns.regplot(x, cpms, ax=ax3, scatter_kws={"s":MSIZE})
+    ax3.axes.set_ylim([cpms.min(),cpms.max()])
     
     plt.show()
         
@@ -443,6 +445,9 @@ def main(screen):
                         full_history.append(("error",event.unicode,time.time()-t0))
                         errors += 1
                         errored = True
+                        if mode==Modes.HARDCORE:
+                            cursor=0
+                            errors_history=[]
                     
         
 if __name__ == "__main__":
@@ -454,7 +459,7 @@ if __name__ == "__main__":
     # parser.add_argument("--lower-only", action="store_true")
     parser.add_argument("--save-file", default="save.txt", type=str)
     parser.add_argument("--no-save", action="store_true")
-    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER,Modes.NUMBERS_NO_MIDDLE,Modes.CUSTOM])
+    parser.add_argument("--mode", default=Modes.ALL, type=str, choices=[Modes.ALL,Modes.LOWER,Modes.ALL_LOWER,Modes.CAPS, Modes.NUMBERS, Modes.SYMBOLS_ONLY, Modes.SYMBOLS_ONLY_UPPER, Modes.SYMBOLS_ONLY_LOWER,Modes.NUMBERS_NO_MIDDLE,Modes.CUSTOM,Modes.HARDCORE])
     parser.add_argument("--symbols",type=str,default=None,help="Overwrite symbols list")
     parser.add_argument("--letters",type=str,default=None)
     parser.add_argument("--exclusive",type=int,default=1)
