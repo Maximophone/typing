@@ -326,8 +326,12 @@ def show_history(data):
     ax1.set_title("Score")
     sns.regplot(x,scores,ax=ax1,scatter_kws={"s":MSIZE})
 #    sns.regplot(x,wpms,ax=ax2,scatter_kws={"s":MSIZE})
-    ax2.set_title("Errors")
-    sns.regplot(x,n_errors,ax=ax2,scatter_kws={"s":MSIZE})
+    if log_errors:
+        ax2.set_title("Log Errors")
+        sns.regplot(x,np.log(1.+n_errors),ax=ax2,scatter_kws={"s":MSIZE})
+    else:
+        ax2.set_title("Errors")
+        sns.regplot(x,n_errors,ax=ax2,scatter_kws={"s":MSIZE})
     ax3.set_title("CPM")
     sns.regplot(x, cpms, ax=ax3, scatter_kws={"s":MSIZE})
     ax3.axes.set_ylim([cpms.min(),cpms.max()])
@@ -470,6 +474,8 @@ if __name__ == "__main__":
     parser.add_argument("--cap",type=int,default=8)
     parser.add_argument("--case",type=str,default="random")
     parser.add_argument("--category",type=str,default="random")
+    parser.add_argument("--vs-ghost",action="store_true",help="Play vs ghost")
+    parser.add_argument("--log-errors",action="store_true",help="Display graph of log of errors")
     
     args = parser.parse_args()
     quiet = args.quiet
@@ -479,6 +485,7 @@ if __name__ == "__main__":
     mode = args.mode
     save_file = args.save_file
     no_save = args.no_save
+    log_errors = args.log_errors
     
     run()
         
